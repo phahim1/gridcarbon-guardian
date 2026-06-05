@@ -1,3 +1,4 @@
+import pandas as pd
 import os
 import json
 from datetime import datetime
@@ -11,6 +12,8 @@ from google.genai.errors import APIError
 from data import workloads, schedule_options
 from scheduler import recommend_schedule
 
+from mongo_store import save_audit_log_to_mongodb, load_audit_logs_from_mongodb
+
 # Load environment variables
 load_dotenv()
 
@@ -19,6 +22,35 @@ st.set_page_config(page_title="GridCarbon Guardian", layout="wide")
 
 st.title("GridCarbon Guardian")
 st.subheader("Carbon-aware, grid-stress-aware scheduling agent for AI/data-centre workloads")
+
+with st.sidebar:
+    st.header("GridCarbon Guardian")
+    st.markdown("""
+    **Purpose:**  
+    Schedule AI/data-centre workloads using carbon, grid-stress, deadline, and governance signals.
+
+    **Core modes:**  
+    - Flexible workload → auto-approved
+    - Urgent workload → human-reviewed
+
+    **Built with:**  
+    - Python
+    - Streamlit
+    - Gemini API
+    - Google Gen AI SDK
+    - JSON audit logging
+    """)
+
+    st.divider()
+
+    st.markdown("""
+    **Demo flow:**
+    1. Select a workload  
+    2. Review schedule decision  
+    3. Generate Gemini explanation  
+    4. Approve/reject if required  
+    5. Save/download audit log  
+    """)
 
 # Gemini setup
 api_key = os.getenv("GEMINI_API_KEY")
@@ -176,7 +208,37 @@ else:
 
 # Candidate options
 st.subheader("All Candidate Schedule Options")
-st.dataframe(result["all_options"], use_container_width=True)
+
+options_df = pd.DataFrame(result["all_options"])
+
+display_columns = [
+    "region",
+    "hour",
+    "hours_from_now",
+    "finish_within_hours",
+    "carbon_intensity",
+    "grid_load",
+    "deadline_violation",
+    "score",
+    "approval_required",
+]
+
+options_df = options_df[display_columns]
+
+options_df = options_df.rename(columns={
+    "region": "Region",
+    "hour": "Start Time",
+    "hours_from_now": "Starts In (h)",
+    "finish_within_hours": "Finishes Within (h)",
+    "carbon_intensity": "Carbon Intensity",
+    "grid_load": "Grid Load (%)",
+    "deadline_violation": "Deadline Violation",
+    "score": "Risk Score",
+    "approval_required": "Approval Required",
+})
+
+st.dataframe(options_df, use_container_width=True)
+
 
 # Gemini explanation
 st.subheader("Gemini Explanation")
@@ -220,11 +282,20 @@ Grid stress avoided:
 Human approval required:
 {best["approval_required"]}
 
-Explain:
-1. Why this schedule was selected.
-2. Why grid stress matters.
-3. Whether the decision should require human approval.
-4. A short audit-ready note.
+Explain in no more than 300 words using this structure:
+
+1. Decision Summary:
+Briefly state the selected region/time and why it was chosen.
+
+2. Key Trade-off:
+Explain the carbon, grid-stress, and deadline trade-off.
+
+3. Governance Decision:
+Explain whether the schedule is auto-approved or requires human approval.
+
+4. Audit Note:
+Write one concise audit-ready note.
+
 """
 
     with st.spinner("Generating Gemini explanation..."):
@@ -367,20 +438,40 @@ st.download_button(
     mime="application/json",
 )
 
-if st.button("Save Audit Log to Local File"):
-    save_audit_log(audit_log)
-    st.success(f"Audit log saved to {AUDIT_LOG_FILE}")
-    
+save_col1, save_col2 = st.columns(2)
 
-st.subheader("Audit History")
+with save_col1:
+    if st.button("Save Audit Log to MongoDB"):
+        saved = save_audit_log_to_mongodb(audit_log)
+        if saved:
+            st.success("Audit log saved to MongoDB decision memory.")
+        else:
+            st.error("MongoDB save failed. Check MONGODB_URI in .env.")
 
-saved_logs = load_audit_logs()
+with save_col2:
+    if st.button("Save Audit Log to Local File"):
+        save_audit_log(audit_log)
+        st.success(f"Audit log saved to {AUDIT_LOG_FILE}")
 
-if saved_logs:
-    st.dataframe(saved_logs, use_container_width=True)
+
+
+
+st.subheader("MongoDB Decision Memory")
+
+mongodb_logs = load_audit_logs_from_mongodb()
+
+if mongodb_logs:
+    st.caption("Retrieved from MongoDB audit_logs collection.")
+    st.dataframe(mongodb_logs, use_container_width=True)
 else:
-    st.info("No saved audit logs yet. Save a decision to create audit history.")
+    st.info("No MongoDB audit records found yet. Save a decision to MongoDB to create decision memory.")
 
+with st.expander("Local fallback audit history"):
+    saved_logs = load_audit_logs()
 
+    if saved_logs:
+        st.dataframe(saved_logs, use_container_width=True)
+    else:
+        st.info("No local audit logs found.")
 
 
