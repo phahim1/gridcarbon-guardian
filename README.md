@@ -191,8 +191,11 @@ Audit logs can be:
 * Google Gen AI SDK
 * Gemini API
 * python-dotenv
+* MongoDB Atlas
+* PyMongo
 * JSON audit logging
 * Local audit history
+
 
 Google Cloud setup prepared:
 
@@ -204,6 +207,31 @@ Google Cloud setup prepared:
 * Artifact Registry API
 * Secret Manager API
 * Firestore API
+
+## MongoDB decision memory
+
+GridCarbon Guardian uses MongoDB Atlas as a persistent decision-memory layer.
+
+Every scheduling decision can be stored in the `gridcarbon_guardian.audit_logs` collection, including:
+
+- workload name
+- selected region and time
+- carbon intensity
+- grid load
+- deadline feasibility
+- approval requirement
+- approval status
+- carbon trade-off
+- timestamp
+- decision ID
+
+This allows the agent to preserve governance history across sessions instead of treating every scheduling decision as isolated.
+
+In the current MVP, MongoDB stores and retrieves audit decisions through a Python integration using PyMongo. The MongoDB-backed audit history is shown inside the app under 
+
+**MongoDB Decision Memory**.
+
+Future work will extend this into a fuller MongoDB MCP-based agent memory layer, allowing the agent to query previous scheduling decisions and use them directly in Gemini-generated rationales.
 
 ---
 
