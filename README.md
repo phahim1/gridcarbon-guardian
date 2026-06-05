@@ -229,9 +229,27 @@ This allows the agent to preserve governance history across sessions instead of 
 
 In the current MVP, MongoDB stores and retrieves audit decisions through a Python integration using PyMongo. The MongoDB-backed audit history is shown inside the app under 
 
-**MongoDB Decision Memory**.
 
 Future work will extend this into a fuller MongoDB MCP-based agent memory layer, allowing the agent to query previous scheduling decisions and use them directly in Gemini-generated rationales.
+
+
+## MongoDB MCP alignment
+
+GridCarbon Guardian currently uses MongoDB Atlas as the persistent decision-memory layer for audit records.
+
+The app writes scheduling decisions to the `gridcarbon_guardian.audit_logs` collection and reads prior decisions back into the dashboard. This makes MongoDB the agent’s external memory for governance history.
+
+This design is aligned with the MongoDB MCP Server partner track because the same MongoDB database and collection can be exposed to MCP-capable AI clients through the official MongoDB MCP Server. In a fuller implementation, the Gemini-powered agent would use MongoDB MCP tools to query previous scheduling decisions, inspect audit history, and retrieve governance context before generating its rationale.
+
+Current implementation:
+- MongoDB Atlas stores audit logs.
+- PyMongo connects the Streamlit app to MongoDB.
+- The app displays MongoDB-backed decision memory.
+
+Planned MCP extension:
+- Configure the official MongoDB MCP Server.
+- Expose the `gridcarbon_guardian.audit_logs` collection as agent-accessible memory.
+- Allow the agent to query prior carbon-grid decisions before producing a Gemini rationale.
 
 ---
 
