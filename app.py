@@ -1,3 +1,4 @@
+from audit import build_audit_log
 import plotly.graph_objects as go
 import pandas as pd
 import os
@@ -816,32 +817,12 @@ if st.session_state.last_decision_workload != workload["job"]:
 
 decision_id = st.session_state.decision_id
 
-
-
-
-audit_log = {
-    "decision_id": decision_id,
-    "decision_timestamp": datetime.now().isoformat(),
-    "workload": workload["job"],
-    "selected_region": best["region"],
-    "selected_time": best["hour"],
-    "carbon_intensity": best["carbon_intensity"],
-    "grid_load": best["grid_load"],
-    "score": best["score"],
-    "score_breakdown": best["score_breakdown"],
-    "decision_reason_codes": result["decision_reason_codes"],
-    "approval_required": best["approval_required"],
-    "approval_status": st.session_state.approval_status,
-    "selected_emissions_kg": result["selected_emissions_kg"],
-    "lowest_carbon_emissions_kg": result["lowest_carbon_emissions_kg"],
-    "carbon_delta_vs_lowest_kg": result["carbon_delta_vs_lowest_kg"],
-    "lowest_carbon_region": result["lowest_carbon_option"]["region"],
-    "lowest_carbon_grid_load": result["lowest_carbon_option"]["grid_load"],
-    "grid_stress_avoided": result["grid_stress_avoided"],
-
-}
-
-
+audit_log = build_audit_log(
+    decision_id=decision_id,
+    workload=workload,
+    result=result,
+    approval_status=st.session_state.approval_status,
+)
 
 st.json(audit_log)
 
@@ -889,5 +870,3 @@ with st.expander("Local fallback audit history"):
         st.dataframe(saved_logs, use_container_width=True)
     else:
         st.info("No local audit logs found.")
-
-
