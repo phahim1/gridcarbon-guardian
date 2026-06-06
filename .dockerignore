@@ -1,0 +1,12 @@
+.env
+.git
+__pycache__/
+*.pyc
+audit_logs.json
+*.pdf
+*.png
+*.jpg
+*.jpeg
+*.mp4
+.venv/
+venv/
