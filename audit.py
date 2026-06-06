@@ -47,7 +47,7 @@ def build_audit_log(
         "lowest_carbon_intensity": lowest_carbon["carbon_intensity"],
         "lowest_carbon_grid_load": lowest_carbon["grid_load"],
         "grid_stress_avoided": result["grid_stress_avoided"],
-        "data_source": "mock_synthetic_mvp",
+        "data_source": result.get("data_source", "mock_synthetic_mvp"),
         "scheduler_version": "mvp_weighted_scoring_v1",
     }
 
