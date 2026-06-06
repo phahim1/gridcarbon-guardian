@@ -115,11 +115,20 @@ def recommend_schedule(workload, options):
     feasible_options = [o for o in ranked if not o["deadline_violation"]]
 
     if feasible_options:
-        ranked_feasible_first = sorted(feasible_options, key=lambda x: x["score"])
-        best = ranked_feasible_first[0]
+        if workload["delay_tolerant"]:
+            grid_safe_feasible_options = [
+                o for o in feasible_options
+                if o["grid_load"] < GRID_STRESS_THRESHOLD
+            ]
+
+            if grid_safe_feasible_options:
+                best = sorted(grid_safe_feasible_options, key=lambda x: x["score"])[0]
+            else:
+                best = sorted(feasible_options, key=lambda x: x["score"])[0]
+        else:
+            best = sorted(feasible_options, key=lambda x: x["score"])[0]
     else:
-        ranked_feasible_first = sorted(ranked, key=lambda x: x["score"])
-        best = ranked_feasible_first[0]
+        best = sorted(ranked, key=lambda x: x["score"])[0]
 
     ranked = sorted(
         ranked,
@@ -141,6 +150,15 @@ def recommend_schedule(workload, options):
     )
 
     decision_reason_codes = list(best["reason_codes"])
+
+    if (
+        workload["delay_tolerant"]
+        and lowest_carbon_option["grid_load"] >= GRID_STRESS_THRESHOLD
+        and best["region"] != lowest_carbon_option["region"]
+    ):
+        decision_reason_codes.append(
+            "FLEXIBLE_WORKLOAD_SHIFTED_AWAY_FROM_GRID_STRESS"
+        )
 
     if grid_stress_avoided:
         decision_reason_codes.append("LOWEST_CARBON_REJECTED_GRID_STRESS")

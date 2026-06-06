@@ -14,10 +14,17 @@ from gemini_service import (
     generate_gemini_explanation,
 )
 
-from data import workloads, schedule_options
+from data_sources import get_workloads, get_schedule_options, get_data_source_label
+
 from scheduler import recommend_schedule
 
-from mongo_store import save_audit_log_to_mongodb, load_audit_logs_from_mongodb
+from mongo_store import (
+    save_audit_log_to_mongodb,
+    load_audit_logs_from_mongodb,
+    load_recent_decisions_by_workload,
+    test_mongodb_connection,
+)
+
 
 # Load environment variables
 load_dotenv()
@@ -368,8 +375,15 @@ def get_cached_genai_client(key: str):
 
 client = get_cached_genai_client(api_key)
 
-
 AUDIT_LOG_FILE = "audit_logs.json"
+
+
+USE_LIVE_DATA = False
+
+workloads = get_workloads()
+schedule_options = get_schedule_options(use_live_data=USE_LIVE_DATA)
+data_source_label = get_data_source_label(use_live_data=USE_LIVE_DATA)
+
 
 
 def save_audit_log(log_entry):
@@ -439,9 +453,6 @@ This prototype schedules flexible AI/data-centre workloads by balancing:
 - human approval requirement
 """)
 
-
-
-
 # Workload selector
 selected_job = st.selectbox(
     "Select workload",
@@ -452,15 +463,20 @@ workload = next(w for w in workloads if w["job"] == selected_job)
 
 # Run scheduler
 result = recommend_schedule(workload, schedule_options)
+result["data_source"] = data_source_label
 best = result["best_option"]
 
 
 
-mongodb_connected = bool(os.getenv("MONGODB_URI"))
+mongodb_connected = test_mongodb_connection()
 
 mongodb_status = "MONGODB MEMORY: CONNECTED" if mongodb_connected else "MONGODB MEMORY: OFFLINE"
 mongodb_status_class = "status-green" if mongodb_connected else "status-amber"
 
+
+
+
+st.caption(f"Data source mode: {data_source_label}")
 
 # Top status bar
 current_grid_load = best["grid_load"] if "best" in locals() else 0
@@ -545,7 +561,13 @@ col4.metric("Carbon intensity", f"{best['carbon_intensity']} gCO₂/kWh")
 
 st.markdown("### Risk Score Breakdown")
 
-score_breakdown = build_score_breakdown(best, workload)
+score_breakdown = {
+    "Carbon": best["score_breakdown"]["carbon_component"],
+    "Grid": best["score_breakdown"]["grid_component"],
+    "Deadline": best["score_breakdown"]["deadline_component"],
+    "Latency": best["score_breakdown"]["latency_component"],
+}
+
 
 fig = go.Figure(
     data=[
@@ -660,7 +682,11 @@ st.dataframe(options_df, use_container_width=True)
 st.subheader("Gemini Explanation")
 
 if st.button("Generate Gemini Explanation"):
-    recent_decisions = load_audit_logs_from_mongodb(limit=3)
+
+    recent_decisions = load_recent_decisions_by_workload(
+        workload_name=workload["job"],
+        limit=3,
+    )
 
     prompt = build_explanation_prompt(
         workload=workload,
@@ -777,11 +803,12 @@ save_col1, save_col2 = st.columns(2)
 
 with save_col1:
     if st.button("Save Audit Log to MongoDB"):
-        saved = save_audit_log_to_mongodb(audit_log)
-        if saved:
-            st.success("Audit log saved to MongoDB decision memory.")
+        save_result = save_audit_log_to_mongodb(audit_log)
+
+        if save_result["success"]:
+            st.success(save_result["message"])
         else:
-            st.error("MongoDB save failed. Check MONGODB_URI in .env.")
+            st.error(save_result["message"])
 
 with save_col2:
     if st.button("Save Audit Log to Local File"):
