@@ -123,3 +123,30 @@ def generate_gemini_explanation(
         "text": None,
         "error": str(last_error),
     }
+
+
+def build_fallback_explanation(workload, result, approval_status):
+    best = result["best_option"]
+
+    approval_text = (
+        "requires human review"
+        if best["approval_required"]
+        else "is auto-approved under the current governance policy"
+    )
+
+    reason_codes = ", ".join(result.get("decision_reason_codes", []))
+
+    return f"""
+1. Decision Summary:
+The scheduler selected {best["region"]} at {best["hour"]} for the workload '{workload["job"]}'. This option was selected using the deterministic carbon-grid-deadline scoring model.
+
+2. Key Trade-off:
+The selected schedule has carbon intensity of {best["carbon_intensity"]} gCO2/kWh and grid load of {best["grid_load"]}%. The selected emissions are {result["selected_emissions_kg"]} kgCO2e. The carbon trade-off versus the lowest-carbon option is {result["carbon_delta_vs_lowest_kg"]} kgCO2e.
+
+3. Governance Decision:
+This schedule {approval_text}. Approval status is currently: {approval_status}.
+
+4. Audit Note:
+Decision reason codes: {reason_codes}. This fallback explanation was generated locally because Gemini was unavailable.
+"""
+

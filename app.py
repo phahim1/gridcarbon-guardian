@@ -8,11 +8,15 @@ import streamlit as st
 
 from dotenv import load_dotenv
 
+
 from gemini_service import (
     get_genai_client,
     build_explanation_prompt,
     generate_gemini_explanation,
+    build_fallback_explanation,
 )
+
+
 
 from data_sources import get_workloads, get_schedule_options, get_data_source_label
 
@@ -704,18 +708,27 @@ if st.button("Generate Gemini Explanation"):
     if gemini_result["success"]:
         st.caption(f"Generated using model: {gemini_result['model']}")
         st.write(gemini_result["text"])
+    
+    
+
+
     else:
-        st.error(
+        st.warning(
             f"Gemini explanation could not be generated. "
             f"Last error: {gemini_result['error']}"
         )
+
         st.info(
-            "The scheduler, audit log, and MongoDB decision memory are still working. "
-            "This is likely a temporary model/API issue."
+            "Showing deterministic fallback explanation generated from scheduler facts."
         )
 
+        fallback_text = build_fallback_explanation(
+            workload=workload,
+            result=result,
+            approval_status=st.session_state.get("approval_status", "unknown"),
+        )
 
-
+        st.write(fallback_text)
 
 
 
