@@ -8,8 +8,11 @@ import streamlit as st
 
 from dotenv import load_dotenv
 
-from google import genai
-from google.genai.errors import APIError
+from gemini_service import (
+    get_genai_client,
+    build_explanation_prompt,
+    generate_gemini_explanation,
+)
 
 from data import workloads, schedule_options
 from scheduler import recommend_schedule
@@ -358,11 +361,13 @@ if not api_key:
 
 
 @st.cache_resource
-def get_genai_client(key: str):
-    return genai.Client(api_key=key)
+def get_cached_genai_client(key: str):
+    return get_genai_client(key)
 
 
-client = get_genai_client(api_key)
+
+client = get_cached_genai_client(api_key)
+
 
 AUDIT_LOG_FILE = "audit_logs.json"
 
@@ -649,106 +654,39 @@ options_df = options_df.rename(columns={
 st.dataframe(options_df, use_container_width=True)
 
 
+
+
 # Gemini explanation
 st.subheader("Gemini Explanation")
 
 if st.button("Generate Gemini Explanation"):
-    prompt = f"""
-You are GridCarbon Guardian, a standards-aware scheduling agent for AI/data-centre workloads.
+    recent_decisions = load_audit_logs_from_mongodb(limit=3)
 
-Explain the following scheduling decision in clear, professional, audit-ready language.
-
-Workload:
-{workload}
-
-Best selected option:
-{best}
-
-Score breakdown:
-{best["score_breakdown"]}
-
-Decision reason codes:
-{result["decision_reason_codes"]}
-
-All options:
-{result["all_options"]}
-
-Selected schedule emissions:
-{result["selected_emissions_kg"]} kgCO2e
-
-Lowest-carbon option emissions:
-{result["lowest_carbon_emissions_kg"]} kgCO2e
-
-Carbon trade-off vs lowest-carbon option:
-{result["carbon_delta_vs_lowest_kg"]} kgCO2e
-
-Lowest-carbon option:
-{result["lowest_carbon_option"]}
-
-
-
-
-
-
-
-Grid stress avoided:
-{result["grid_stress_avoided"]}
-
-Human approval required:
-{best["approval_required"]}
-
-Explain in no more than 300 words using this structure:
-
-1. Decision Summary:
-Briefly state the selected region/time and why it was chosen.
-
-2. Key Trade-off:
-Explain the carbon, grid-stress, and deadline trade-off.
-
-3. Governance Decision:
-Explain whether the schedule is auto-approved or requires human approval.
-
-4. Audit Note:
-Write one concise audit-ready note.
-
-"""
+    prompt = build_explanation_prompt(
+        workload=workload,
+        result=result,
+        approval_status=st.session_state.get("approval_status", "unknown"),
+        recent_decisions=recent_decisions,
+    )
 
     with st.spinner("Generating Gemini explanation..."):
-        
-        models_to_try = [
-            "gemini-2.5-flash",
-            "gemini-2.0-flash",
-            "gemini-2.0-flash-lite",
-        ]
+        gemini_result = generate_gemini_explanation(
+            client=client,
+            prompt=prompt,
+        )
 
-        response_text = None
-        last_error = None
-
-        for model_name in models_to_try:
-            try:
-                response = client.models.generate_content(
-                    model=model_name,
-                    contents=prompt
-                )
-                response_text = response.text
-                st.caption(f"Generated using model: {model_name}")
-                break
-
-            except APIError as api_err:
-                last_error = api_err
-                continue
-
-            except Exception as general_err:
-                last_error = general_err
-                continue
-
-        if response_text:
-            st.write(response_text)
-        else:
-            st.error(f"Gemini explanation could not be generated. Last error: {last_error}")
-            st.info("The scheduler and audit log are still working. This is likely temporary model/API demand.")
-
-
+    if gemini_result["success"]:
+        st.caption(f"Generated using model: {gemini_result['model']}")
+        st.write(gemini_result["text"])
+    else:
+        st.error(
+            f"Gemini explanation could not be generated. "
+            f"Last error: {gemini_result['error']}"
+        )
+        st.info(
+            "The scheduler, audit log, and MongoDB decision memory are still working. "
+            "This is likely a temporary model/API issue."
+        )
 
 
 
