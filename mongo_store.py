@@ -1,7 +1,7 @@
 import os
 from datetime import datetime
 from typing import Any, Dict, List, Optional
-
+import certifi
 from pymongo import MongoClient, DESCENDING
 from pymongo.errors import PyMongoError, ServerSelectionTimeoutError, ConfigurationError
 
@@ -16,8 +16,11 @@ def get_mongo_collection():
 
     client = MongoClient(
         mongodb_uri,
-        serverSelectionTimeoutMS=5000,
-        connectTimeoutMS=5000,
+        serverSelectionTimeoutMS=10000,
+        connectTimeoutMS=10000,
+        socketTimeoutMS=10000,
+        tls=True,
+        tlsCAFile=certifi.where(),
     )
 
     db = client[database_name]
