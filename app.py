@@ -1,3 +1,4 @@
+from textwrap import dedent
 from audit import build_audit_log
 import plotly.graph_objects as go
 import pandas as pd
@@ -420,6 +421,54 @@ def load_audit_logs():
 
 
 
+def render_html(markup: str):
+    st.html(dedent(markup).strip())
+
+
+
+
+# UI HELPER: compact status pill
+def status_pill(label, value, color="#7CFF9B"):
+    return (
+        f'<span style="display:inline-block;border:1px solid {color};'
+        f'color:{color};background:rgba(124,255,155,0.06);'
+        f'border-radius:999px;padding:4px 8px;margin:3px 4px 3px 0;'
+        f'font-family:Space Mono,monospace;font-size:10px;'
+        f'letter-spacing:0.04em;">{label}: {value}</span>'
+    )
+
+
+# UI HELPER: reason-code pill colors
+def reason_code_pill(code):
+    if code in [
+        "DEADLINE_FEASIBLE",
+        "AUTO_APPROVED_LOW_RISK",
+        "LOWEST_CARBON_REJECTED_GRID_STRESS",
+    ]:
+        color = "#4ade80"
+    elif code in [
+        "MODERATE_OR_HIGH_GRID_LOAD",
+        "FLEXIBLE_WORKLOAD_SHIFTED_AWAY_FROM_GRID_STRESS",
+    ]:
+        color = "#FFD166"
+    elif code in [
+        "HIGH_GRID_STRESS",
+        "HUMAN_APPROVAL_REQUIRED",
+        "DEADLINE_VIOLATION",
+    ]:
+        color = "#ef4444"
+    else:
+        color = "#9AE6B4"
+
+    return (
+        f'<span style="display:inline-block;border:1px solid {color};'
+        f'color:{color};background:rgba(255,255,255,0.03);'
+        f'border-radius:999px;padding:4px 8px;margin:3px 4px 3px 0;'
+        f'font-family:Space Mono,monospace;font-size:10px;">'
+        f'{code}</span>'
+    )
+
+
 
 def build_score_breakdown(best, workload):
     carbon_component = 0.40 * (best["carbon_intensity"] / 600)
@@ -499,28 +548,27 @@ decision_mode = "HUMAN REVIEW" if best["approval_required"] else "AUTO-GOVERNED"
 
 
 
-st.markdown(
-    f"""
-    <div class="top-status-bar">
-        <div class="brand-block">
-            <span class="live-dot"></span>
-            <span class="brand-title">GRIDCARBON GUARDIAN</span>
-        </div>
-        <div class="nav-tabs">
-            <span>DASHBOARD</span>
-            <span>WORKLOADS</span>
-            <span>AUDIT LOG</span>
-            <span>POLICY</span>
-        </div>
-        <div class="status-pills">
-            <span class="status-pill {grid_status_class}">{grid_status}: {current_grid_load}%</span>
-            <span class="status-pill {mongodb_status_class}">{mongodb_status}</span>
-            <span class="status-pill status-amber">{decision_mode}</span>
-        </div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+# HEALTH STRIP
+gemini_health = "READY/FALLBACK"
+mongo_health = "CONNECTED" if mongodb_connected else "OFFLINE"
+scheduler_health = "OK"
+cloud_health = "LIVE"
+data_health = data_source_label
+
+render_html(f"""
+<div style="background:#07100B;border:1px solid #1F3D2B;border-radius:10px;
+padding:10px 14px;margin:8px 0 18px 0;font-family:Space Mono,monospace;">
+    {status_pill("SCHEDULER", scheduler_health, "#4ade80")}
+    {status_pill("GEMINI", gemini_health, "#FFD166")}
+    {status_pill("MONGODB", mongo_health, "#4ade80" if mongodb_connected else "#FFD166")}
+    {status_pill("DATA", data_health, "#9AE6B4")}
+    {status_pill("CLOUD RUN", cloud_health, "#4ade80")}
+</div>
+""")
+
+
+
+
 
 
 st.info(
@@ -562,6 +610,86 @@ col1.metric("Recommended region", best["region"])
 col2.metric("Recommended time", best["hour"])
 col3.metric("Grid load", f"{best['grid_load']}%")
 col4.metric("Carbon intensity", f"{best['carbon_intensity']} gCO₂/kWh")
+
+
+# PROOF OF DECISION PANEL
+approval_status_preview = (
+    "HUMAN REVIEW REQUIRED"
+    if best["approval_required"]
+    else "AUTO-APPROVED"
+)
+
+approval_color = "#FFD166" if best["approval_required"] else "#4ade80"
+
+reason_pills = "".join(
+    reason_code_pill(code)
+    for code in result.get("decision_reason_codes", [])
+)
+
+render_html(f"""
+<div style="background:#0B1510;border:1px solid #1F3D2B;border-radius:12px;
+padding:16px 18px;margin:18px 0 20px 0;font-family:Space Mono,monospace;">
+
+    <div style="color:#9AE6B4;font-size:11px;letter-spacing:0.12em;
+    text-transform:uppercase;margin-bottom:14px;">
+        PROOF OF DECISION
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:12px;margin-bottom:14px;">
+
+        <div>
+            <div style="color:#9AE6B4;font-size:10px;">SELECTED REGION</div>
+            <div style="color:#D8FFE3;font-size:14px;">{best["region"]}</div>
+        </div>
+
+        <div>
+            <div style="color:#9AE6B4;font-size:10px;">SELECTED TIME</div>
+            <div style="color:#D8FFE3;font-size:14px;">{best["hour"]}</div>
+        </div>
+
+        <div>
+            <div style="color:#9AE6B4;font-size:10px;">GRID LOAD</div>
+            <div style="color:#D8FFE3;font-size:14px;">{best["grid_load"]}%</div>
+        </div>
+
+        <div>
+            <div style="color:#9AE6B4;font-size:10px;">CARBON INTENSITY</div>
+            <div style="color:#D8FFE3;font-size:14px;">{best["carbon_intensity"]} gCO₂/kWh</div>
+        </div>
+
+        <div>
+            <div style="color:#9AE6B4;font-size:10px;">RISK SCORE</div>
+            <div style="color:#D8FFE3;font-size:14px;">{best["score"]}</div>
+        </div>
+
+        <div>
+            <div style="color:#9AE6B4;font-size:10px;">APPROVAL MODE</div>
+            <div style="color:{approval_color};font-size:14px;">{approval_status_preview}</div>
+        </div>
+
+        <div>
+            <div style="color:#9AE6B4;font-size:10px;">DATA SOURCE</div>
+            <div style="color:#D8FFE3;font-size:14px;">{data_source_label}</div>
+        </div>
+
+        <div>
+            <div style="color:#9AE6B4;font-size:10px;">GRID STRESS AVOIDED</div>
+            <div style="color:#D8FFE3;font-size:14px;">{result["grid_stress_avoided"]}</div>
+        </div>
+    </div>
+
+    <div style="color:#9AE6B4;font-size:10px;margin-bottom:6px;">
+        REASON CODES
+    </div>
+
+    <div>{reason_pills}</div>
+</div>
+""")
+
+
+
+
 
 st.markdown("### Risk Score Breakdown")
 
