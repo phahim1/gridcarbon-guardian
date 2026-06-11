@@ -1,0 +1,7 @@
+hour,carbon_intensity,grid_load,carbon_only_choice,gridcarbon_choice,note
+10:00,220,94,yes,no,Lowest carbon but high grid stress
+12:00,290,82,no,no,Moderate carbon but elevated load
+14:00,330,58,no,yes,Safer grid window selected
+16:00,410,72,no,no,Higher carbon and moderate load
+18:00,500,60,no,no,High carbon despite acceptable load
+22:00,360,45,no,yes,Low grid stress backup window

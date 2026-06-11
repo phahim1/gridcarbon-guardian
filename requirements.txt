@@ -5,3 +5,4 @@ pandas
 pymongo
 plotly
 certifi
+google-adk
