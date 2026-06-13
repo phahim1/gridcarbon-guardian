@@ -479,6 +479,11 @@ gridcarbon-guardian/
 
 ---
 
+## Try Live 
+[gridcarbon-guardian
+](https://gridcarbon-guardian-314240269343.us-central1.run.app/)
+
+
 ## How to run locally
 
 1. Clone or open the project folder.
@@ -594,131 +599,7 @@ It is especially relevant for grid-stressed regions where clean-energy schedulin
 
 ---
 
-## Devpost Submission Text
-
-### Title
-
-**GridCarbon Guardian**
-Carbon-aware, grid-stress-aware scheduling agent for AI/data-centre workloads
-
-### Tagline
-
-A Gemini-powered workload scheduling agent using MongoDB decision memory for grid-resilient, audit-ready AI/data-centre operations.
-
-### Inspiration
-
-AI and data-centre workloads are becoming more energy-intensive. Most carbon-aware schedulers optimize only for carbon intensity, ignoring grid stress.
-
-GridCarbon Guardian is inspired by carbon-aware computing approaches, but extends the idea for grid-resilient and audit-ready workload scheduling. It combines carbon intensity, grid-load stress, deadline feasibility, human approval, and MongoDB-backed decision memory into one transparent scheduling prototype.
-
-The key insight is simple:
-
-> The cleanest electricity window is not always the safest grid window.
-
-### What it does
-
-GridCarbon Guardian:
-
-* evaluates carbon intensity and grid stress for multiple time-region options
-* recommends a schedule that balances carbon, grid resilience, and deadlines
-* rejects low-carbon options that are too grid-stressed
-* escalates urgent high-risk schedules for human approval
-* uses Gemini to generate audit-ready explanations
-* records every decision in MongoDB decision memory
-* allows operators to download JSON audit logs
-
-### How we built it
-
-We built the MVP with:
-
-* Python
-* Streamlit
-* Gemini API / Google Gen AI SDK
-* MongoDB Atlas
-* PyMongo
-* pandas
-* JSON audit logging
-
-The scheduler uses a transparent weighted scoring model:
-
-```text
-40% carbon intensity
-+ 30% grid stress
-+ 20% deadline risk
-+ 10% latency/cost proxy
-```
-
-Gemini generates the explanation layer, while MongoDB stores the governance memory layer.
-
-### Use of Google Cloud
-
-The project uses Gemini API for explanation generation and is designed for deployment on Google Cloud.
-
-Target Google Cloud architecture:
-
-* Gemini API for reasoning and explanation generation
-* Vertex AI Agent Platform / Google Cloud Agent Builder for multi-agent orchestration
-* Cloud Run for hosting
-* Secret Manager for credentials
-
-### Use of sponsor product
-
-GridCarbon Guardian uses MongoDB Atlas as its decision-memory layer.
-
-The `gridcarbon_guardian.audit_logs` collection stores:
-
-* workload decisions
-* approval status
-* carbon-grid trade-offs
-* grid-load risk
-* timestamps
-* audit metadata
-
-The project is aligned with the MongoDB MCP Server partner track because the same audit collection can be exposed as agent-accessible memory through MongoDB MCP tools.
-
-### Challenges we ran into
-
-* Balancing carbon optimization with grid-stress risk
-* Designing a simple but explainable scoring model
-* Handling urgent workloads that cannot wait for cleaner windows
-* Making Gemini explanations audit-ready instead of generic
-* Creating a persistent decision-memory layer in MongoDB
-* Keeping the MVP realistic while designing a more advanced multi-agent architecture
-
-### Accomplishments
-
-* Built a working carbon-grid scheduling prototype
-* Implemented deadline feasibility logic
-* Added human-in-the-loop approval
-* Added Gemini-generated rationale
-* Added downloadable JSON audit logs
-* Added MongoDB-backed decision memory
-* Created two clear demo scenarios: auto-approved flexible workload and human-reviewed urgent workload
-
-### What we learned
-
-* Carbon-aware scheduling without grid-stress awareness can still be risky
-* Human-in-the-loop governance is important for critical-infrastructure decisions
-* Auditability is essential for trustworthy AI infrastructure operations
-* MongoDB can act as a practical decision-memory layer for AI agents
-* A simple transparent scoring model can be more trustworthy than a black-box scheduler
-
-### What is next
-
-Next steps include:
-
-* Cloud Run deployment
-* Electricity Maps API integration
-* official MongoDB MCP Server demonstration
-* Agent Builder orchestration
-* policy-as-code governance
-* game-theoretic routing
-* bio-inspired torpor and honeybee scheduling logic
-* Arize or Dynatrace observability
-
-
-## MongoDB MCP / Partner Tool Integration
-GridCarbon Guardian uses MongoDB Atlas as the agent’s persistent decision-memory and audit-ledger layer. The project exposes MongoDB-backed tool functions for saving carbon decisions, retrieving recent decisions, loading the audit ledger, and checking memory status. These functions are structured as MCP-aligned partner tools and can be migrated to the official MongoDB MCP Server interface.
+decisions, retrieving recent decisions, loading the audit ledger, and checking memory status. These functions are structured as MCP-aligned partner tools and can be migrated to the official MongoDB MCP Server interface.
 
 
 
